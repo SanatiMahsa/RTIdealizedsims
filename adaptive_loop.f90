@@ -308,7 +308,7 @@ SUBROUTINE dice_multifile_read
     ! if (dmf_i.eq.3) cycle
 
     call load_dice_particles
-    !if (hydro.eqv..false.) call kill_gas_part(1)
+    if (hydro.eqv..false.) call kill_gas_part(1)
     dice_init=.false.
     ! call init_tree
     

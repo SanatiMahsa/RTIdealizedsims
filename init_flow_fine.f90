@@ -493,6 +493,154 @@ end subroutine init_flow_fine
 !################################################################
 !################################################################
 !################################################################
+
+
+subroutine init_flow_fine_dmf(ilevel,rfoverride,gclear)
+  use amr_commons
+  use hydro_commons
+  use cooling_module
+  ! use pm_commons, ONLY: up32
+  use dice_commons
+  implicit none
+#ifndef WITHOUTMPI
+  include 'mpif.h'
+#endif
+  integer::ilevel
+
+  logical,intent(in)::rfoverride,gclear
+
+  integer::i,icell,igrid,ncache,iskip,ngrid,ilun
+  integer::ind,idim,ivar,ix,iy,iz,nx_loc
+  integer::i1,i2,i3,i1_min,i1_max,i2_min,i2_max,i3_min,i3_max
+  integer::buf_count,info,nvar_in
+  integer ,dimension(1:nvector),save::ind_grid,ind_cell
+
+  real(dp)::scale_nH,scale_T2,scale_l,scale_d,scale_t,scale_v
+  real(dp)::dx,rr,vx,vy,vz,ek,ei,pp,xx1,xx2,xx3,dx_loc,scale,xval
+  real(dp),dimension(1:3)::skip_loc
+  real(dp),dimension(1:twotondim,1:3)::xc
+  real(dp),dimension(1:nvector)       ,save::vv
+  real(dp),dimension(1:nvector,1:ndim),save::xx
+  real(dp),dimension(1:nvector,1:nvar),save::uu
+  real(dp)::axlen
+
+  real(dp),allocatable,dimension(:,:,:)::init_array
+  real(kind=4),allocatable,dimension(:,:)  ::init_plane
+
+  logical::error,ok_file1,ok_file2,ok_file3,ok_file
+  character(LEN=80)::filename
+  character(LEN=5)::nchar,ncharvar
+
+  integer,parameter::tag=1107
+  integer::dummy_io,info2
+
+  if(numbtot(1,ilevel)==0)return
+  if(verbose)write(*,111)ilevel
+
+  ! Conversion factor from user units to cgs units
+  call units(scale_l,scale_t,scale_d,scale_v,scale_nH,scale_T2)
+
+  ! Mesh size at level ilevel in coarse cell units
+  dx=0.5D0**ilevel
+
+  ! Set position of cell centers relative to grid center
+  do ind=1,twotondim
+    iz=(ind-1)/4
+    iy=(ind-1-4*iz)/2
+    ix=(ind-1-2*iy-4*iz)
+    if(ndim>0)xc(ind,1)=(dble(ix)-0.5D0)*dx
+    if(ndim>1)xc(ind,2)=(dble(iy)-0.5D0)*dx
+    if(ndim>2)xc(ind,3)=(dble(iz)-0.5D0)*dx
+  end do
+
+  ! Local constants
+  nx_loc=(icoarse_max-icoarse_min+1)
+  skip_loc=(/0.0d0,0.0d0,0.0d0/)
+  if(ndim>0)skip_loc(1)=dble(icoarse_min)
+  if(ndim>1)skip_loc(2)=dble(jcoarse_min)
+  if(ndim>2)skip_loc(3)=dble(kcoarse_min)
+  scale=boxlen/dble(nx_loc)
+  dx_loc=dx*scale
+  ncache=active(ilevel)%ngrid
+
+#ifndef WITHOUTMPI
+  ! write(*,*) 'init_flow_fine check 549', myid
+  call MPI_Barrier(MPI_COMM_WORLD,info)
+#endif
+
+  do i=1,MAXGAL
+    if (ic_mag_scale_B(i) .EQ. 0.0) cycle
+    ! renormalise axes
+    axlen = SQRT(ic_mag_axis_x(i)**2 + ic_mag_axis_y(i)**2 + ic_mag_axis_z(i)**2)
+    ic_mag_axis_x(i) = ic_mag_axis_x(i) / axlen
+    ic_mag_axis_y(i) = ic_mag_axis_y(i) / axlen
+    ic_mag_axis_z(i) = ic_mag_axis_z(i) / axlen
+  enddo
+
+
+
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!---------------------- DICE ADDING GAS TO AMR GRID ----------------------!
+  if (gclear) call reset_uold3(ilevel)
+    
+#ifndef WITHOUTMPI
+  call MPI_Barrier(MPI_COMM_WORLD,info)
+#endif
+  ! call reset_uold(ilevel)
+  ! Update the grid using the gas particles read from the Gadget1 file
+  ! NGP scheme is used
+
+  if (gclear) call condinit_loc(ilevel,rfoverride)
+  ! Reverse update boundaries
+  ! call reset_uold3(ilevel)
+  do ivar=1,nvar
+    call make_virtual_reverse_dp(uold(:,ivar),ilevel)
+    ! if (dmf_loop.gt.1) call make_virtual_reverse_dp_dmf(utmp(:,ivar),ilevel) 
+  end do
+  call make_virtual_reverse_int_dmf(readflag(:),ilevel)
+
+  if (dmf_i.eq.dmf_loop) call init_uold(ilevel)
+  do ivar=1,nvar
+    call make_virtual_fine_dp(uold(:,ivar),ilevel)
+    ! if (dmf_loop.gt.1) call make_virtual_fine_dp(utmp(:,ivar),ilevel)
+  end do
+  call make_virtual_fine_int(readflag(:),ilevel)
+#ifndef WITHOUTMPI
+! write(*,*) 'init_flow_fine check 476', myid
+call MPI_Barrier(MPI_COMM_WORLD,info)
+#endif
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+!=========================================================================!
+
+
+111 format('   Entering init_flow_fine for level ',I2)
+
+end subroutine init_flow_fine_dmf
+!################################################################
+!################################################################
+!################################################################
+!################################################################
 subroutine region_condinit(x,q,dx,nn)
   use amr_parameters
   use hydro_parameters
@@ -613,3 +761,342 @@ subroutine region_condinit(x,q,dx,nn)
 
   return
 end subroutine region_condinit
+subroutine reset_uold3(ilevel)
+  use amr_commons
+  use hydro_commons
+  use dice_commons
+  implicit none
+#ifndef WITHOUTMPI
+  include 'mpif.h'
+#endif
+  integer::ilevel
+  integer::ncell
+  !--------------------------------------------------------------------------
+  ! This routine sets array uold to zero before calling
+  ! the hydro scheme. uold is set to zero in virtual boundaries as well.
+  !--------------------------------------------------------------------------
+  integer::i,ivar,irad,ind,icpu,iskip,info, j
+
+  if(numbtot(1,ilevel)==0)return
+  if(verbose)write(*,111)ilevel
+#ifndef WITHOUTMPI
+  ! write(*,*) 'ireset_uold2 check 669', myid
+  call MPI_Barrier(MPI_COMM_WORLD,info)
+#endif
+
+  !!!!Set uold to uold for myid cells
+  !!!!ncell = ncoarse+twotondim*ngridmax
+  ! do j=1, dmf_ncell
+  !   if (readflag(j).eq.0) uold(j,:) = 0D0
+  !   ! if (readflag(j).eq.1) uold(j,:) = 0D0
+  !   if (readflag(j).eq.2) uold(j,:) = 0D0
+  !   if (readflag(j).eq.3) uold(j,:) = 0D0
+  !   ! if (readflag(j).eq.1 .or. readflag(j).eq.3) uold(j,:) = utmp(j,:)
+  !   ! if (readflag(j).eq.1) uold(j,:) = utmp(j,:) 
+  !   if (readflag(j).eq.3) uold(j,1) = utmp(j,1)
+  ! end do
+
+  do ind=1,twotondim
+    iskip=ncoarse+(ind-1)*ngridmax
+    do ivar=1,nvar
+      do i=1,active(ilevel)%ngrid
+        j = active(ilevel)%igrid(i)+iskip
+        if (readflag(j).eq.0) uold(j,ivar) = 0D0
+        ! if (readflag(j).eq.1) uold(j,ivar) = 0D0
+        if (readflag(j).eq.2) uold(j,ivar) = 0D0
+        if (readflag(j).eq.3) uold(j,ivar) = 0D0
+        ! if (readflag(i).eq.1) uold(i,ivar) = utmp(i,ivar) 
+        if (dmf_i.gt.1) then
+          if (readflag(j).eq.3) uold(j,ivar) = utmp(j,ivar)
+        end if
+      end do
+    end do
+  end do
+
+  ! Set uold to 0 for virtual boundary cells
+  do icpu=1,ncpu
+    do ind=1,twotondim
+      iskip=ncoarse+(ind-1)*ngridmax
+      do ivar=1,nvar
+        do i=1,reception(icpu,ilevel)%ngrid
+          j = reception(icpu,ilevel)%igrid(i)+iskip
+          if (readflag(j).eq.0) uold(j,ivar) = 0D0
+          ! if (readflag(i).eq.1) uold(i,ivar) = 0D0
+          if (readflag(j).eq.2) uold(j,ivar) = 0D0
+          if (readflag(j).eq.3) uold(j,ivar) = 0D0
+          ! if (readflag(i).eq.1) uold(i,ivar) = utmp(i,ivar) 
+          if (dmf_i.gt.1) then
+            if (readflag(j).eq.3) uold(j,ivar) = utmp(j,ivar)
+          end if
+        end do
+      end do
+    end do
+  end do
+
+#ifndef WITHOUTMPI
+  call MPI_Barrier(MPI_COMM_WORLD,info)
+#endif
+
+111 format('   Entering reset_uold3 for level ',i2)
+
+end subroutine reset_uold3
+
+
+subroutine init_uold(ilevel)
+  use amr_commons
+  use hydro_commons
+  use dice_commons
+  implicit none
+  integer::ilevel,info
+  !--------------------------------------------------------------------------
+  ! This routine sets array unew to its initial value uold before calling
+  ! the hydro scheme. unew is set to zero in virtual boundaries.
+  !--------------------------------------------------------------------------
+  integer::i,ivar,irad,ind,icpu,iskip,idim
+  real(dp)::d,u,v,w,e
+  real(dp)::scale_l,scale_t,scale_d,scale_v,scale_nH,scale_T2,IG_den, IG_TFl
+
+  call units(scale_l,scale_t,scale_d,scale_v,scale_nH,scale_T2)
+
+  if(numbtot(1,ilevel)==0)return
+  if(verbose)write(*,111)ilevel
+  ! write(*,'(a,es15.5)') 'IG_rho test 1', IG_rho
+  IG_den = IG_rho * (1.989e33) / (dble(3.086e+18)**3)    !----- IG_rho change units from Msol pc^-3 to g cm^-3
+  ! write(*,'(a,es15.5)') 'IG_rho test 2', IG_den
+  IG_den = IG_den / scale_d                          !----- IG_rho change units from g cm^-3 to internal
+  ! write(*,'(a,2es15.5)') 'IG_rho test 3', IG_den, smallr
+  IG_den = max(IG_den,smallr)    
+  IG_TFl = IG_T2/scale_T2/(gamma-1)
+  ! print*, 'IG_den, IG_TFl ',IG_den, IG_TFl
+  ! print*, 'IG_den2, IG_TFl2 ',IG_rho/scale_nH, IG_T2/scale_T2/(gamma-1)
+
+  ! Set uold to namelist values for myid cells
+  ! do ind=1,twotondim
+  !    iskip=ncoarse+(ind-1)*ngridmax
+
+  !    do ivar=nvar,1,-1
+  !       do i=1,active(ilevel)%ngrid
+
+  !          if(uold(active(ilevel)%igrid(i)+iskip,1).lt.IG_rho/scale_nH) then
+  !             uold(active(ilevel)%igrid(i)+iskip,ivar)    = 0D0
+  !             if(ivar.eq.1) then
+  !              ! uold(active(ilevel)%igrid(i)+iskip,ivar)   = max(IG_rho/scale_nH,smallr)
+  !              uold(active(ilevel)%igrid(i)+iskip,ivar)   = IG_den
+  !             end if
+  !             if(ivar.eq.ndim+2)then
+  !                ! uold(active(ilevel)%igrid(i)+iskip,ivar) = IG_T2/scale_T2/(gamma-1)*max(IG_rho/scale_nH,smallr)
+  !                uold(active(ilevel)%igrid(i)+iskip,ivar) = IG_TFl*IG_den
+  !             endif
+  !             if(metal) then
+  !               ! if(ivar.eq.imetal  ) uold(active(ilevel)%igrid(i)+iskip,ivar) = max(IG_rho/scale_nH,smallr)*IG_metal * 0.333d0
+  !               ! if(ivar.eq.imetal+1) uold(active(ilevel)%igrid(i)+iskip,ivar) = max(IG_rho/scale_nH,smallr)*IG_metal * 0.667d0
+  !               if(ivar.eq.imetal  ) uold(active(ilevel)%igrid(i)+iskip,ivar) = IG_den*IG_metal * 0.333d0
+  !               if(ivar.eq.imetal+1) uold(active(ilevel)%igrid(i)+iskip,ivar) = IG_rho*IG_metal * 0.667d0
+  !             endif
+  !          endif
+  !       end do
+  !    end do
+  ! end do
+  do ind=1,twotondim
+     iskip=ncoarse+(ind-1)*ngridmax
+     do i=1,active(ilevel)%ngrid
+        if(uold(active(ilevel)%igrid(i)+iskip,1).lt.IG_den) then
+
+           uold(active(ilevel)%igrid(i)+iskip,:) = 0D0           
+           uold(active(ilevel)%igrid(i)+iskip,1) = IG_den
+           uold(active(ilevel)%igrid(i)+iskip,5) = IG_TFl*IG_den
+           if(metal) then
+             if(ivar.eq.imetal  ) uold(active(ilevel)%igrid(i)+iskip,ivar) = IG_den*IG_metal * 0.333d0
+             if(ivar.eq.imetal+1) uold(active(ilevel)%igrid(i)+iskip,ivar) = IG_den*IG_metal * 0.667d0
+           endif
+        endif
+     end do
+  end do
+  ! Set cell averaged kinetic energy
+  do ind=1,twotondim
+     iskip=ncoarse+(ind-1)*ngridmax
+     do i=1,active(ilevel)%ngrid
+        ! Initialisation of the refinement mask
+        if((ic_mask_ivar.gt.0).and.(ivar_refine.gt.0).and.(ic_mask_ivar.le.nvar).and.(ivar_refine.le.nvar))then
+     ! Switch to K/mu for ic_mask_ivar=ndim+2 case
+           if(ic_mask_ivar.eq.ndim+2) then
+        u = uold(active(ilevel)%igrid(i)+iskip,ic_mask_ivar)*scale_T2*(gamma-1)
+           else
+        u = uold(active(ilevel)%igrid(i)+iskip,ic_mask_ivar)
+           endif
+           if(ic_mask_ivar.gt.1)then
+              u = u/uold(active(ilevel)%igrid(i)+iskip,1)
+           endif
+           if((u.ge.ic_mask_min).and.(u.le.ic_mask_max))then
+              uold(active(ilevel)%igrid(i)+iskip,ivar_refine) = 1.0*uold(active(ilevel)%igrid(i)+iskip,1)
+           endif
+        endif
+        e = 0d0
+        do idim=1,ndim
+           e = e+0.5*uold(active(ilevel)%igrid(i)+iskip,idim+1)**2/uold(active(ilevel)%igrid(i)+iskip,1)
+        enddo
+        uold(active(ilevel)%igrid(i)+iskip,ndim+2) = uold(active(ilevel)%igrid(i)+iskip,ndim+2)+e
+     end do
+  end do
+
+!#ifdef SOLVERmhd
+!  ! set constant magnetic field
+!  CALL mag_constant(ilevel)
+!  ! toroidal field
+!  CALL mag_compute(ilevel)
+!#endif
+
+  ! Set uold to 0 for virtual boundary cells
+  do icpu=1,ncpu
+  do ind=1,twotondim
+     iskip=ncoarse+(ind-1)*ngridmax
+     do ivar=1,nvar
+        do i=1,reception(icpu,ilevel)%ngrid
+           uold(reception(icpu,ilevel)%igrid(i)+iskip,ivar)=0.0
+        end do
+     end do
+  end do
+  end do
+
+111 format('   Entering init_uold for level ',i2)
+
+end subroutine init_uold
+
+subroutine condinit_loc(ilevel,rfoverride)
+  use amr_commons
+  use pm_commons
+  use hydro_commons
+  use poisson_commons
+  use dice_commons
+  implicit none
+  integer::ilevel
+  !------------------------------------------------------------------
+  ! This routine computes the initial density field at level ilevel using
+  ! the CIC scheme from particles that are not entirely in
+  ! level ilevel (boundary particles).
+  ! Arrays flag1 and flag2 are used as temporary work space.
+  !------------------------------------------------------------------
+  integer::igrid,jgrid,ipart,jpart,idim,icpu,next_part
+  integer::i,ig,ip,npart1,npart2
+  real(dp)::dx
+  logical,intent(in)::rfoverride
+
+  integer,dimension(1:nvector),save::ind_grid,ind_cell
+  integer,dimension(1:nvector),save::ind_part,ind_grid_part
+  real(dp),dimension(1:nvector,1:ndim),save::x0
+
+  if(numbtot(1,ilevel)==0)return
+  if(verbose)write(*,111)ilevel
+
+  ! Mesh spacing in that level
+  dx=0.5D0**ilevel
+  ! Loop over cpus
+  do icpu=1,ncpu
+    ! Loop over grids
+    igrid=headl(icpu,ilevel)
+    ig=0
+    ip=0
+    do jgrid=1,numbl(icpu,ilevel)
+      npart1=numbp(igrid)  ! Number of particles in the grid
+      npart2=0
+      ! Count gas particles
+      if(npart1>0)then
+        ipart=headp(igrid)
+        ! Loop over particles
+        do jpart=1,npart1
+          ! Save next particle   <--- Very important !!!
+          next_part=nextp(ipart)
+          if(ic_mask_ptype.eq.-1)then
+            if(idp(ipart).eq.1)then
+              npart2=npart2+1
+            end if
+          else
+            npart2=npart2+1
+          endif
+          ipart=next_part  ! Go to next particle
+        end do
+      end if
+
+      ! Gather gas particles∂
+      if(npart2>0)then
+        ig=ig+1
+        ind_grid(ig)=igrid
+        ipart=headp(igrid)
+
+        ! Loop over particles
+        do jpart=1,npart1
+          ! Save next particle   <--- Very important !!!
+          next_part=nextp(ipart)
+          if(ic_mask_ptype.eq.-1)then
+            if(idp(ipart).eq.1)then
+              if(ig==0)then
+                ig=1
+                ind_grid(ig)=igrid
+              end if
+              ip=ip+1
+              ind_part(ip)=ipart
+              ind_grid_part(ip)=ig
+            endif
+          else
+            if(ig==0)then
+              ig=1
+              ind_grid(ig)=igrid
+            end if
+            ip=ip+1
+            ind_part(ip)=ipart
+            ind_grid_part(ip)=ig
+          endif
+          if(ip==nvector)then
+            ! Lower left corner of 3x3x3 grid-cube
+            do idim=1,ndim
+              do i=1,ig
+                x0(i,idim)=xg(ind_grid(i),idim)-3.0D0*dx
+              end do
+            end do
+
+            do i=1,ig
+              ind_cell(i)=father(ind_grid(i))
+            end do
+            
+            !if(amr_struct) then
+            !  call init_gas_ngp(ind_grid,ind_part,ind_grid_part,ig,ip,ilevel)
+            !else
+            !  call init_gas_cic(ind_cell,ind_part,ind_grid_part,x0,ig,ip,ilevel,rfoverride)
+            !endif
+            
+            ip=0
+            ig=0
+          end if
+          ipart=next_part  ! Go to next particle
+        end do
+        ! End loop over particles
+      end if
+
+      igrid=next(igrid)   ! Go to next grid
+    end do
+    ! End loop over grids
+
+    if(ip>0)then
+      ! Lower left corner of 3x3x3 grid-cube
+      do idim=1,ndim
+        do i=1,ig
+          x0(i,idim)=xg(ind_grid(i),idim)-3.0D0*dx
+        end do
+      end do
+      do i=1,ig
+        ind_cell(i)=father(ind_grid(i))
+      end do
+      !if(amr_struct) then
+      !  call init_gas_ngp(ind_grid,ind_part,ind_grid_part,ig,ip,ilevel,rfoverride)
+      !else
+      !  call init_gas_cic(ind_cell,ind_part,ind_grid_part,x0,ig,ip,ilevel,rfoverride,rfoverride)
+      !endif
+    end if
+  end do
+
+111 format('   Entering condinit_loc for level ',I2)
+
+end subroutine condinit_loc
+!==================================================================================
+!==================================================================================
+!==================================================================================
