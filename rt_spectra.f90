@@ -1055,7 +1055,6 @@ SUBROUTINE inp_SED_table(age, Z, nProp, same, ret)
         da1 * dz0 * SED_table(ia,   iz+1, :, nProp) + &
         da0 * dz1 * SED_table(ia+1, iz,   :, nProp) + &
         da1 * dz1 * SED_table(ia,   iz,   :, nProp)
-  !write(*,*)"ret:",ret
 
 END SUBROUTINE inp_SED_table
 
@@ -1079,150 +1078,11 @@ SUBROUTINE getNPhotonsEmitted(age1_Gyr, dt_Gyr, Z, ret)
   ! Lc1 = cumulative emitted photons at the end of the timestep
   call inp_SED_table(age1_Gyr, Z, 2, .false., Lc1)
   ret = max(Lc1-Lc0,0.)
-  !ret = ret*100
-  !write(*,*),'ret:',ret
   if(SED_isEgy) then ! Integrate correct energy rather than # of photons
      ! Divide emitted energy by group energy -> Photon count
      ret = ret / group_egy(1:nSEDgroups)
   endif
 END SUBROUTINE getNPhotonsEmitted
-
-
-
-
-!*************************************************************************
-SUBROUTINE getNPhotonsBlackbody(age1_Gyr, dt_Gyr, Z, ret)
-
-  ! Compute the number of photons emitted by a blackbody star per solar mass
-  ! over a given age and metallicity.
-  ! input:
-  ! age1_Gyr => Star age [Gyrs] at timestep end
-  ! dt_gyr   => Timestep length in Gyr  !1.905219893796071E-006
-  ! Z       => Star metallicity [m_metals/m_tot]
-  ! output:
-  ! ret     => # of photons emitted per solar mass over timestep for HI, HeI, and HeII
-!-------------------------------------------------------------------------
-  
-  use rt_parameters
-  real*8 :: age1_Gyr, dt_Gyr, Z, mass, scale_msun
-  real*8, dimension(nSEDgroups), intent(out) :: ret
-!-------------------------------------------------------------------------
-
-  !Variables
-  real*8 :: lambda_min
-  real*8 :: lambda_max
-  real*8 :: wavelength
-  real*8 :: E_photon    !Energy per photon 
-  !real*8 :: N_photons_IR
-  real*8 :: N_photons_HI
-  real*8 :: N_photons_HeI
-  real*8 :: N_photons_HeII
-  real*8 :: B_lambda    ! Spectral radiance [W/m^2/m]
-!-------------------------------------------------------------------------
-
-  ! Constants
-  real*8, parameter :: h = 6.62607015e-34    ! Planck's constant [J s]
-  real*8, parameter :: c = 2.99792458e8      ! Speed of light [m/s]
-  real*8, parameter :: kb = 1.380649e-23     ! Boltzmann constant [J/K]
-  real*8, parameter :: solar_mass = 1.989e30 ! Solar mass [kg]
-  real*8, parameter :: T_bb = 1e4            ! Blackbody tempereture [K]
-  real*8, parameter :: delta_lambda = 1e-10  ! 1 angstrom
-  real*8, parameter :: A_bb = 1.306e31       ! Blackbody surface [m^2]
-  real*8, parameter :: Mass_bb = 1.0e5       ! Blackbody mass [Msun]
-  real*8, parameter :: unit_time = 3.154e16  ! convert timestep in Gyr to second
-!-------------------------------------------------------------------------
-  real*8 :: age_Myr ! Age in Myr
-  real*8 :: t_max_Myr ! Maximum age for photon emission in Myr
-!-------------------------------------------------------------------------
-  
-  ! Group energies (in eV)
-  !real*8, parameter :: E_IR = 0.1
-  !real*8, parameter :: E_OP = 1.0
-  real*8, parameter :: E_HI = 13.60
-  real*8, parameter :: E_HeI = 24.59
-  real*8, parameter :: E_HeII = 54.42
-
-  ! Group wavelengths (in meter)
-  !real*8 :: lambda_IR = h * c / (E_IR * 1.602176634e-19)  
-  !real*8 :: lambda_OP = h * c / (E_OP * 1.602176634e-19)  
-  real*8 :: lambda_HI = h * c / (E_HI * 1.602176634e-19)  
-  real*8 :: lambda_HeI = h * c / (E_HeI * 1.602176634e-19)
-  real*8 :: lambda_HeII = h * c / (E_HeII * 1.602176634e-19)
-!-------------------------------------------------------------------------
-
-! Convert the star age to Myr
-  age_Myr = age1_Gyr * 1.0e3
-  ! Set the maximum age for photon emission to 10 Myrs
-  t_max_Myr = 10.0
-  
-! Define wavelength range for the photon groups
-  !write(*,*) 'Entered the Black Body subroutine'
-  lambda_min = lambda_HI
-  lambda_max = lambda_HeII
-
-! Initialize the total number of photons
-  !N_photons_IR = 0.0
-  N_photons_HI = 0.0
-  N_photons_HeI = 0.0
-  N_photons_HeII = 0.0
-
-
-! Integrate over the wavelength range
-  wavelength = lambda_min
-  !write(*,*) 'started the loop'
-  do while (wavelength >= 0)
-      ! Calculate the energy per photon
-      E_photon = h * c / wavelength
-      !write(*,*), 'computed E_photon'
-
-      ! Calculate the spectral radiance using Planck's law
-      B_lambda = (2.0 * h * c**2 / (wavelength**5)) / (exp(h * c / (wavelength * kb * T_bb)) - 1.0)
-      !write(*,*), 'computed B_lambda'
-
-      ! Check if the age of the star is within the emission time
-      if (age_Myr <= t_max_Myr) then
-         
-         !write(*,*) 'Age', age_Myr
-
-         ! Accumulate the number of photons in the respective photon groups
-         !if (wavelength <= lambda_IR .and. wavelength > lambda_OP ) then
-         !    N_photons_IR = N_photons_IR + B_lambda * delta_lambda / E_photon
-
-         if (wavelength <= lambda_HI .and. wavelength > lambda_HeI) then
-             N_photons_HI = N_photons_HI + B_lambda * delta_lambda / E_photon
-
-         else if (wavelength <= lambda_HeI .and. wavelength > lambda_HeII) then
-             N_photons_HeI = N_photons_HeI + B_lambda * delta_lambda / E_photon
-
-         else if (wavelength <= lambda_HeII) then
-             N_photons_HeII = N_photons_HeII + B_lambda * delta_lambda / E_photon
-         end if
-      else 
-         exit
-
-      end if
-
-      ! Increment wavelength
-      wavelength = wavelength - delta_lambda ! Decrement by 0.1 angstrom
-  end do
-  !write(*,*) 'finished the loop'
-
-  
-  ! Compute the number of photons emitted in units # per second per solar mass
-  !ret(1) = (N_photons_IR   *A_bb/Mass_bb) * unit_time*dt_Gyr
-  ret(1) = (N_photons_HI   *A_bb/Mass_bb) * unit_time*dt_Gyr
-  ret(2) = (N_photons_HeI  *A_bb/Mass_bb) * unit_time*dt_Gyr
-  ret(3) = (N_photons_HeII *A_bb/Mass_bb) * unit_time*dt_Gyr
-
-  ! Compute the number of photons emitted in units # per time step per solar mass
-
-
-  !write(*,*),'ret:',ret
-  !write(*,*), 'end of BB dt_Gyr:', dt_Gyr
-
-END SUBROUTINE getNPhotonsBlackbody
-!*************************************************************************
-
 
 #if NGROUPS > 0
 !*************************************************************************
@@ -1413,18 +1273,9 @@ SUBROUTINE star_RT_vsweep(ind_grid,ind_part,ind_grid_part,ng,np,dt,ilevel)
 #endif
      ! Possibilities:     Born i) before dt, ii) within dt, iii) after dt:
      dt_loc_Gyr = max(min(dt_Gyr, age), 0.)
-#ifndef MS
      call getNPhotonsEmitted(age,dt_loc_Gyr,z,part_NpInp(j,1:nSEDgroups))
-#else
-     if(mp(ind_part(j)).ge.((mstar_massive*0.9)/scale_msun))then
-      call getNPhotonsBlackbody(age, dt_loc_Gyr, z, part_NpInp(j,1:nSEDgroups))
-     else
-      call getNPhotonsEmitted(age,dt_loc_Gyr,z,part_NpInp(j,1:nSEDgroups))
-     endif
-#endif
      if(use_initial_mass) then
         mass = mp0(ind_part(j))
-        !write(*,*) 'mass_star', mass, scale_msun
      else
         mass = mp(ind_part(j))
         if(age.gt.t_sne_Gyr) then

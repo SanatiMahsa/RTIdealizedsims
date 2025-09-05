@@ -131,11 +131,6 @@ subroutine star_formation(ilevel)
   ! Initial star particle mass
   if(m_star < 0d0)then
      mstar = n_star/(scale_nH*aexp**3)*vol_min*fstar_min    
-#ifdef MS 
-     if(nstar_tot == 0)then
-        mstar = mstar_massive/scale_msun
-     endif
-#endif
   else
      mstar=m_star*mass_sph
   endif
@@ -1081,12 +1076,6 @@ subroutine star_formation(ilevel)
                  nstar(i)        = nstar_corrected
               endif
 
-              if (mstar.ge.((mstar_massive*0.9)/scale_msun)) then
-                 nstar_corrected = min(nstar(i),1)
-                 mstar_lost      = mstar_lost+(nstar(i)-nstar_corrected)*mstar
-                 nstar(i)        = nstar_corrected
-                 write(*,*)"check 1 massive star",mstar,nstar_corrected,nstar(i),mstar_lost
-              endif
 
               ! Compute new stars local statistics
               if (nstar(i)>0) then
@@ -1246,15 +1235,6 @@ subroutine star_formation(ilevel)
            vp(ind_part(i),1)   = u
            vp(ind_part(i),2)   = v
            vp(ind_part(i),3)   = w
-#ifdef MS
-           !Position and velocity of first star
-           if(mstar.ge.((mstar_massive*0.9)/scale_msun))then
-              idp(ind_part(i))    = abs(idp(ind_part(i)))
-              write(*,*)'A massive star is formed with mass: ',mstar*scale_msun
-              write(*,*)'Star positions:',xp(ind_part(i),1),xp(ind_part(i),2),xp(ind_part(i),3)
-              write(*,*)'Star velocities:',vp(ind_part(i),1),vp(ind_part(i),2),vp(ind_part(i),3)
-           endif
-#endif
 
            ! Random kick, added by Joki, Jan 19th 2016 -------------------
            if(SF_kick_kms .gt. 0d0) then

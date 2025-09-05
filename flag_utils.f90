@@ -339,12 +339,6 @@ subroutine userflag_fine(ilevel)
         if(ilevel.gt.nlevelmax_part+nlevel_collapse)then
            if(dx_loc<(4d0**(1d0/ndim))*(dx_min/aexp)) prevent_refine=.true.
         endif
-!#ifdef MS
-!        if(ilevel.gt.15)then 
-!         prevent_refine=.true.
-!         !write(*,*)"entered level",ilevel
-!        endif
-!#endif
      endif
      if(.not.prevent_refine)then
         if(nlevelmax_current.le.ilevel) nlevelmax_current = ilevel+1

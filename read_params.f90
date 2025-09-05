@@ -183,9 +183,6 @@ subroutine read_params
   endif
 #endif
 
-#ifdef MS
-  write(*,*)'Massive Star Formation Flag is active'
-#endif
   
   !Write I/O group size information
   if(IOGROUPSIZE>0.or.IOGROUPSIZECONE>0.or.IOGROUPSIZEREP>0)write(*,*)' '

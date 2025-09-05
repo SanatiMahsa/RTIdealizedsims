@@ -44,7 +44,6 @@ module pm_commons
   integer::sinkint_level=0         ! maximum level currently active is where the global sink variables are updated
   real(dp)::ssoft                  ! sink softening lenght in code units
   real(dp)::rho_min_acc_code
-  real(dp),parameter::mstar_massive=1.0d5
 
 
   ! Particles drag on SMBH
