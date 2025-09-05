@@ -368,7 +368,7 @@ subroutine read_params
 #endif
   if (sink)call read_sink_params
   if (clumpfind .or. sink)call read_clumpfind_params
-  if (movie)call set_movie_vars
+  !if (movie)call set_movie_vars
 
 
   close(1)

@@ -2601,9 +2601,9 @@ subroutine upd_cloud(ind_part,np)
         ! if(isink>0)then
         if ((idp(ind_part(j)).lt.0).and.(tp(ind_part(j)).eq.0.0d0)) then
            lev=level_p(j)
-           if (.not. fix_sink2com) then
+           !if (.not. fix_sink2com) then
               new_xp(j,idim)=new_xp(j,idim)+sink_jump(isink,idim,lev)
-           end if
+           !end if
         endif
      end do
   end do

@@ -185,7 +185,7 @@ recursive subroutine amr_step(ilevel,icount)
                              ! beyond what is allocated as an array amovout/tmovout
         if(aexp>=amovout(imov).or.t>=tmovout(imov))then
                                call timer('movie','start')
-           call output_frame()
+           !call output_frame()
         endif
      endif
   end if
