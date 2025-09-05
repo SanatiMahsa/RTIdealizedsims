@@ -838,25 +838,25 @@ subroutine grow_sink(ilevel,on_creation)
      ! Accrete to sink variables
      msink(isink)=msink(isink)+msink_all(isink)
      xsink(isink,1:ndim)=xsink(isink,1:ndim)+xsink_all(isink,1:ndim)
-#ifdef MS
-     if(any(abs(xsink(isink,1:ndim))>1.0d0))then
-      xsink(isink,1:ndim)=tracker(1)%xpos
-      write(*,'("xsink_c:",3(1X,1PE14.7))'), xsink(isink,1:ndim) 
-     end if
-     if(any(isnan(xsink(isink,1:ndim))))then
-      xsink(isink,1:ndim)=tracker(1)%xpos
-      write(*,'("xsinknan_c:",3(1X,1PE14.7))'), xsink(isink,1:ndim)
-     endif
-     if(any(abs(vsink(isink,1:ndim))>1.0d0))then
-      vsink(isink,1:ndim)=tracker(1)%vel
-      write(*,'("vsink_c:",3(1X,1PE14.7))'), vsink(isink,1:ndim) 
-      !cycle
-     end if
-     if(any(isnan(vsink(isink,1:ndim))))then
-      vsink(isink,1:ndim)=tracker(1)%vel
-      write(*,'("vsinknan_c:",3(1X,1PE14.7))'), vsink(isink,1:ndim)
-     endif
-#endif
+!#ifdef MS
+!     if(any(abs(xsink(isink,1:ndim))>1.0d0))then
+!      xsink(isink,1:ndim)=tracker(1)%xpos
+!      write(*,'("xsink_c:",3(1X,1PE14.7))'), xsink(isink,1:ndim) 
+!     end if
+!     if(any(isnan(xsink(isink,1:ndim))))then
+!      xsink(isink,1:ndim)=tracker(1)%xpos
+!      write(*,'("xsinknan_c:",3(1X,1PE14.7))'), xsink(isink,1:ndim)
+!     endif
+!     if(any(abs(vsink(isink,1:ndim))>1.0d0))then
+!      vsink(isink,1:ndim)=tracker(1)%vel
+!      write(*,'("vsink_c:",3(1X,1PE14.7))'), vsink(isink,1:ndim) 
+!      !cycle
+!     end if
+!     if(any(isnan(vsink(isink,1:ndim))))then
+!      vsink(isink,1:ndim)=tracker(1)%vel
+!      write(*,'("vsinknan_c:",3(1X,1PE14.7))'), vsink(isink,1:ndim)
+!     endif
+!#endif
      !write(*,'("After addition xsink:",4(1X,1PE14.7))'), xsink(isink,1:ndim)
      !write(*,'("xsink_all:",3(1X,1PE14.7))'), xsink_all(isink,1:ndim) 
      vsink(isink,1:ndim)=vsink(isink,1:ndim)+vsink_all(isink,1:ndim)
