@@ -3,11 +3,13 @@ subroutine init_part
   use amr_commons
   use pm_commons
   use clfind_commons
+#ifdef DICE
   ! DICE patch
   use dice_commons
   use cooling_module
   use gadgetreadfilemod
   ! DICE patch
+#endif
 
 
 #ifdef RT
@@ -48,7 +50,9 @@ subroutine init_part
   real(kind=8)::dispmax=0.0,dispall
   real(dp),dimension(1:3)::skip_loc
   real(dp),dimension(1:3)::centerofmass
+#ifdef DICE
   integer,dimension(:),allocatable::cii 
+#endif
 
   integer::ibuf,tag=101,tagf=102,tagu=102
   integer::countsend,countrecv
@@ -62,11 +66,15 @@ subroutine init_part
   character(LEN=80)::filename,filename_x
   character(LEN=80)::fileloc
   character(LEN=20)::filetype_loc
-  character(LEN=5)::nchar,ncharcpu,T1
+  character(LEN=5)::nchar,ncharcpu
+#ifdef DICE
+  character(LEN=5)::T1
   character(LEN=3)::T2
+#endif
   integer,parameter::tagg=1109,tagg2=1110,tagg3=1111
   integer::dummy_io,info2
 
+#ifdef DICE
   ! DICE patch
   integer::j,k,jj,kk,type_index
   integer::blck_cnt,stat,ifile,dummy_int, blck_size
@@ -102,6 +110,7 @@ subroutine init_part
   integer, dimension(:),  allocatable::tp3
   ! DICE patch
   if (myid.eq.1) write(*,*) 'Allocating Particle Arrays'
+#endif
   if(verbose)write(*,*)'Entering init_part'
 
   if(allocated(xp))then
@@ -117,7 +126,9 @@ subroutine init_part
   allocate(prevp (npartmax))
   allocate(levelp(npartmax))
   allocate(idp   (npartmax))
+#ifdef DICE
   allocate(cii   (npartmax))
+#endif
 #ifdef OUTPUT_PARTICLE_POTENTIAL
   allocate(ptcl_phi(npartmax))
 #endif
@@ -905,6 +916,7 @@ subroutine init_part
         if(debug)write(*,*)'npart=',npart,'/',npart_cpu(ncpu)
 
       
+#ifdef DICE
       ! DICE patch
     case ('MFdice')
       !############################################################################################
@@ -1236,6 +1248,7 @@ subroutine init_part
      !############################################################################################
      !############################################################################################
 
+#endif
      case ('gadget')
         call load_gadget
 
@@ -1371,6 +1384,7 @@ end subroutine load_gadget
 ! !############################################################################################
 ! !############################################################################################
 
+#ifdef DICE 
 subroutine load_dice_particles()
   use amr_commons
   use pm_commons
@@ -1813,3 +1827,4 @@ END SUBROUTINE load_dice_particles
 !############################################################################################
 !############################################################################################
 !############################################################################################
+#endif

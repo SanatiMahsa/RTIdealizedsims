@@ -4,8 +4,10 @@ subroutine adaptive_loop
   use pm_commons
   use poisson_commons
   use cooling_module
+#ifdef DICE
   use dice_commons, ONLY:dice_init, dice_mfr, dmf_i, dmf_loop, dmf_ordering
   use amr_parameters, ONLY:ordering      
+#endif
 #ifdef RT
   use rt_hydro_commons
 #endif
@@ -27,10 +29,11 @@ subroutine adaptive_loop
   end if
 #endif
 
-
+#ifdef DICE
   if (nrestart.eq.0 .and. dice_mfr) then
     call dice_multifile_read
   else
+#endif
   call init_amr                      ! Initialize AMR variables
   call init_time                     ! Initialize time variables
   if(hydro)call init_hydro           ! Initialize hydro variables
@@ -56,10 +59,10 @@ subroutine adaptive_loop
   if(pic)call init_part              ! Initialize particle variables
   if(pic)call init_tree              ! Initialize particle tree
   if(nrestart==0)call init_refine_2  ! Build initial AMR grid again
+#ifdef DICE
   end if
-  ! if (dice_mfr) ordering = dmf_ordering
-  ! print*, 'ordering test3 ', trim(ordering),' ',trim(dmf_ordering)
   dice_mfr = .FALSE.
+#endif
 
 
 
@@ -80,7 +83,9 @@ subroutine adaptive_loop
   nstep_coarse_old=nstep_coarse
 
   if(myid==1)write(*,*)'Starting time integration' 
+#ifdef DICE
   dice_init = .false.
+#endif
 
   do ! Main time loop
                                call timer('coarse levels','start')
@@ -245,6 +250,7 @@ end subroutine adaptive_loop
 !############################################################################################
 
 
+#ifdef DICE
 SUBROUTINE dice_multifile_read
 
   use amr_commons
@@ -827,7 +833,7 @@ SUBROUTINE particles_to_grid  !(ilevel,icount)
 
 END SUBROUTINE particles_to_grid
 
-
+#endif
 
 
 

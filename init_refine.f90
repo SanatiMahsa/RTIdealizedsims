@@ -60,24 +60,28 @@ subroutine init_refine_2
 #endif
   use pm_commons
   use poisson_commons
+#ifdef DICE
   use dice_commons
+#endif
   implicit none
   integer::ilevel,i,ivar
 
   if(filetype.eq.'grafic')return
 
   do i=levelmin,nlevelmax+1
+#ifdef DICE
     ! DICE------
     do ilevel=levelmin-1,1,-1
       if(pic)call merge_tree_fine(ilevel)
     enddo
     ! ----------
+#endif
      call refine_coarse
      do ilevel=1,nlevelmax
         call build_comm(ilevel)
         call make_virtual_fine_int(cpu_map(1),ilevel)
         call refine_fine(ilevel)
-        !if(hydro)call init_flow_fine(ilevel)
+#ifdef DICE
       ! DICE------
       if(pic)call make_tree_fine(ilevel)
       ! ----------
@@ -94,21 +98,28 @@ subroutine init_refine_2
         call virtual_tree_fine(ilevel) !<<<<< MODIFY/MAKE THIS SUBRTOUNE TO move flag around
       endif
       ! ----------
+#else
+        if(hydro)call init_flow_fine(ilevel)
+#endif
 #ifdef RT
         if(rt)call rt_init_flow_fine(ilevel)
 #endif
      end do
 
+#ifdef DICE
     ! DICE------
     do ilevel=nlevelmax-1,levelmin,-1
       if(pic)call merge_tree_fine(ilevel)
     enddo
     ! ----------
-     !if(nremap>0)call load_balance
+#else
+     if(nremap>0)call load_balance
+#endif
 
      do ilevel=levelmin,nlevelmax
         if(pic)call make_tree_fine(ilevel)
         if(poisson)call rho_fine(ilevel,2)
+#ifdef DICE
       if (hydro) then
         if (dice_mfr) then
           call init_flow_fine_dmf(ilevel,.true.,.true.)
@@ -116,6 +127,7 @@ subroutine init_refine_2
           call init_flow_fine(ilevel)
         end if
       end if
+#endif
         if(pic)then
            call kill_tree_fine(ilevel)
            call virtual_tree_fine(ilevel)
@@ -157,6 +169,7 @@ subroutine init_refine_2
 
   end do
 
+#ifdef DICE
   ! DICE------
   do ilevel=levelmin-1,1,-1
     if(pic)call merge_tree_fine(ilevel)
@@ -186,7 +199,7 @@ subroutine init_refine_2
   !end if
   !! dice_init=.false.
   !! ----------
-
+#endif
 #ifdef RT
   if(rt .and. rt_is_init_xion) then
      if(myid==1) write(*,*) 'Initializing ionization states from T profile'
@@ -202,6 +215,7 @@ end subroutine init_refine_2
 !################################################################
 !################################################################
 !################################################################
+#ifdef DICE
 subroutine kill_gas_part(ilevel)
   use pm_commons
   use amr_commons
@@ -349,3 +363,4 @@ npart_cpu(myid)=npart
 111 format('   Entering kill_gas_part for level ',I2)
 !---------------------------------------------
 end subroutine
+#endif

@@ -1,7 +1,9 @@
 subroutine init_hydro
   use amr_commons
   use hydro_commons
+#ifdef DICE
   use dice_commons
+#endif
 #ifdef RT      
   use rt_parameters,only: convert_birth_times
 #endif
@@ -30,7 +32,9 @@ subroutine init_hydro
   allocate(uold(1:ncell,1:nvar+3))
   allocate(unew(1:ncell,1:nvar+3))
   uold=0.0d0; unew=0.0d0
+#ifdef DICE
   dmf_ncell = ncell
+#endif
   if(pressure_fix)then
      allocate(divu(1:ncell))
      allocate(enew(1:ncell))

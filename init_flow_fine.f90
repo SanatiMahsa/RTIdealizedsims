@@ -495,6 +495,7 @@ end subroutine init_flow_fine
 !################################################################
 
 
+#ifdef DICE
 subroutine init_flow_fine_dmf(ilevel,rfoverride,gclear)
   use amr_commons
   use hydro_commons
@@ -637,6 +638,7 @@ call MPI_Barrier(MPI_COMM_WORLD,info)
 111 format('   Entering init_flow_fine for level ',I2)
 
 end subroutine init_flow_fine_dmf
+#endif
 !################################################################
 !################################################################
 !################################################################
@@ -762,6 +764,7 @@ subroutine region_condinit(x,q,dx,nn)
   return
 end subroutine region_condinit
 
+#ifdef DICE
 subroutine reset_uold3(ilevel)
   use amr_commons
   use hydro_commons
@@ -1423,4 +1426,5 @@ subroutine init_gas_cic(ind_cell,ind_part,ind_grid_part,x0,ng,np,ilevel,rfoverri
 !=========================================================================!
 
 end subroutine init_gas_cic
+#endif
 
