@@ -1283,7 +1283,15 @@ SUBROUTINE star_RT_vsweep(ind_grid,ind_part,ind_grid_part,ng,np,dt,ilevel)
            mass = mass / (1d0-eta_sn)
         endif
      endif
+#ifndef DICE
      part_NpInp(j,:) = part_NpInp(j,:)*mass*scale_inp !#photons per volume code units
+#else
+      if(tp(ind_part(j)).gt.-1.d0)then
+         part_NpInp(j,:) = part_NpInp(j,:)*mass*scale_inp
+     else
+         part_NpInp(j,:) = part_NpInp(j,:)*mass*scale_inp*0.0d0
+     endif
+#endif
 
      if(showSEDstats .and. nSEDgroups .gt. 0) then
         step_nPhot = step_nPhot+part_NpInp(j,1)*scale_nPhot
