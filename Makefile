@@ -12,7 +12,7 @@ SOLVER=mhd
 PATCH= ../patch/IDRTSink_DB
 EXEC=ramses_rtmhd-fullphys
 ATON_FLAGS= #-DATON  # Uncomment to enable ATON.
-#TRACKER_FLAGS= -DTRACKER
+TRACKER_FLAGS= -DTRACKER
 DICE_FLAGS= -DDICE
 RT_FLAGS= -DRT -DNIONS=$(NIONS) -DNGROUPS=$(NGROUPS)
 #############################################################################
@@ -68,7 +68,7 @@ VPATH = $(PATCH):../$(SOLVER):../aton:../rt:../hydro:../pm:../poisson:../amr
 # All objects
 MODOBJ = amr_parameters.o amr_commons.o random.o pm_parameters.o pm_commons.o poisson_parameters.o \
         poisson_commons.o hydro_parameters.o hydro_commons.o cooling_module.o bisection.o \
-	sparse_mat.o clfind_commons.o gadgetreadfile.o $(MECHFB) $(WRITEFILES) dice_commons.o #tracker_commons.o track_center_mass.o 
+	sparse_mat.o clfind_commons.o gadgetreadfile.o $(MECHFB) $(WRITEFILES) dice_commons.o tracker_commons.o track_center_mass.o 
 AMROBJ = read_params.o init_amr.o init_time.o init_refine.o adaptive_loop.o amr_step.o \
 	update_time.o output_amr.o flag_utils.o physical_boundaries.o virtual_boundaries.o \
 	refine_utils.o nbors_utils.o hilbert.o load_balance.o title.o sort.o cooling_fine.o \
