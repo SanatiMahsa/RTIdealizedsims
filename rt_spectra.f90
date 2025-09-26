@@ -685,6 +685,7 @@ SUBROUTINE star_RT_feedback(ilevel, dt)
   integer:: igrid, jgrid, ipart, jpart, next_part
   integer:: i, ig, ip, npart1, npart2, icpu
   integer,dimension(1:nvector),save:: ind_grid, ind_part, ind_grid_part
+  logical::ok_star=.false.
 !-------------------------------------------------------------------------
 #if NGROUPS > 0
   if(.not.rt_advect)RETURN
@@ -711,7 +712,11 @@ SUBROUTINE star_RT_feedback(ilevel, dt)
               next_part = nextp(ipart)
               !if(idp(ipart) .gt. 0 .and. tp(ipart) .ne. 0.d0) then 
               ! if(idp(ipart) .ne. 0 .and. tp(ipart) .ne. 0.d0) then 
-              if(is_star(idp(ipart),mp(ipart),tp(ipart))) then
+              ok_star = is_star(idp(ipart),mp(ipart),tp(ipart)) 
+#ifdef DICE
+              ok_star = ok_star .and. (tp(ipart) .gt. -1.d0)
+#endif
+              if(ok_star) then
                  npart2 = npart2+1     ! only stars
               endif
               ipart = next_part        ! Go to next particle
@@ -728,7 +733,11 @@ SUBROUTINE star_RT_feedback(ilevel, dt)
               ! Save next particle      <--- Very important !!!
               next_part = nextp(ipart)
               ! Select only star particles
-              if(is_star(idp(ipart),mp(ipart),tp(ipart))) then
+              ok_star = is_star(idp(ipart),mp(ipart),tp(ipart)) 
+#ifdef DICE
+              ok_star = ok_star .and. (tp(ipart) .gt. -1.d0)
+#endif
+              if(ok_star) then
               ! if(idp(ipart) .ne. 0 .and. tp(ipart) .ne. 0.d0) then
                  if(ig==0)then
                     ig=1      
@@ -1283,15 +1292,7 @@ SUBROUTINE star_RT_vsweep(ind_grid,ind_part,ind_grid_part,ng,np,dt,ilevel)
            mass = mass / (1d0-eta_sn)
         endif
      endif
-#ifndef DICE
      part_NpInp(j,:) = part_NpInp(j,:)*mass*scale_inp !#photons per volume code units
-#else
-      if(tp(ind_part(j)).gt.-1.d0)then
-         part_NpInp(j,:) = part_NpInp(j,:)*mass*scale_inp
-     else
-         part_NpInp(j,:) = part_NpInp(j,:)*mass*scale_inp*0.0d0
-     endif
-#endif
 
      if(showSEDstats .and. nSEDgroups .gt. 0) then
         step_nPhot = step_nPhot+part_NpInp(j,1)*scale_nPhot
