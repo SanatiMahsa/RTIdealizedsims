@@ -1527,8 +1527,8 @@ subroutine seed_smbh_center_mass(it)
      isink=nindsink
      idsink_new(isink)=nindsink
      oksink_new(isink)=1
-     !msink_new(isink)=(0.5d0*smbh_mass_track_mass/scale_m)*msun2gram
-     msink_new(isink)=(smbh_mass_track_mass/scale_m)*msun2gram
+     msink_new(isink)=(0.5d0*smbh_mass_track_mass/scale_m)*msun2gram
+     !msink_new(isink)=(smbh_mass_track_mass/scale_m)*msun2gram
      tracker(it)%has_sink=.true.
      xsink_new(isink,:)=tracker(it)%xpos
      ! xsink_new(isink,1)=xtrack_center_mass(1)
