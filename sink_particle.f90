@@ -1003,7 +1003,11 @@ subroutine accrete_sink(ind_grid,ind_part,ind_grid_part,ng,np,ilevel,on_creation
            if (on_creation)then
               if (new_born(isink))then
                  ! on sink creation, new sinks
+#ifdef DICE
+                 acc_mass =0.0
+#else
                  acc_mass=0.5*mseed(isink)*weight/volume*d/density
+#endif
               else
                  ! on sink creation, preexisting sinks
                  acc_mass=0.         
